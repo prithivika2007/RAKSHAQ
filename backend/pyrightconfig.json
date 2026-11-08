@@ -1,0 +1,18 @@
+{
+  "include": ["app", "tests"],
+  "exclude": ["**/__pycache__", ".venv"],
+  "venvPath": ".",
+  "venv": ".venv",
+  "executionEnvironments": [
+    {
+      "root": ".",
+      "extraPaths": [".."]
+    }
+  ],
+  "typeCheckingMode": "basic",
+  "reportGeneralTypeIssues": "none",
+  "reportAttributeAccessIssue": "none",
+  "reportAssignmentType": "none",
+  "reportArgumentType": "none"
+}
+
