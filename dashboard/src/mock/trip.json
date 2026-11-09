@@ -1,0 +1,99 @@
+{
+  "id": 1,
+  "employee_id": 1,
+  "driver_id": 1,
+  "vehicle_id": 1,
+  "pickup_location": "Pallavaram Railway Station",
+  "destination": "ELCOT SEZ Sholinganallur",
+  "status": "ACTIVE",
+  "planned_route": [
+    [
+      12.968,
+      80.15
+    ],
+    [
+      12.9602,
+      80.1618
+    ],
+    [
+      12.9568,
+      80.1735
+    ],
+    [
+      12.9541,
+      80.1852
+    ],
+    [
+      12.9469,
+      80.1973
+    ],
+    [
+      12.9418,
+      80.2064
+    ],
+    [
+      12.9372,
+      80.2138
+    ],
+    [
+      12.9331,
+      80.2209
+    ],
+    [
+      12.9298,
+      80.2276
+    ],
+    [
+      12.9234,
+      80.2268
+    ],
+    [
+      12.9152,
+      80.2251
+    ],
+    [
+      12.9085,
+      80.2294
+    ],
+    [
+      12.9038,
+      80.2335
+    ],
+    [
+      12.9018,
+      80.2405
+    ],
+    [
+      12.9002,
+      80.2462
+    ],
+    [
+      12.901,
+      80.252
+    ],
+    [
+      12.906,
+      80.251
+    ]
+  ],
+  "last_employee_heartbeat_at": "2026-11-09T04:13:57.241728+00:00",
+  "last_driver_heartbeat_at": "2026-11-09T04:13:57.241752+00:00",
+  "employee": {
+    "id": 1,
+    "name": "Ananya Sharma",
+    "phone": "+91 98410 88219",
+    "role": "Data Platform Engineer (Night Shift)"
+  },
+  "driver": {
+    "id": 1,
+    "name": "Rajesh Kumar",
+    "phone": "+91 98401 23456",
+    "license_no": "TN-07-20180004521",
+    "night_duty_eligible": true
+  },
+  "vehicle": {
+    "id": 1,
+    "plate_number": "TN 09 BZ 4412",
+    "model": "Maruti Suzuki Dzire (White)"
+  }
+}

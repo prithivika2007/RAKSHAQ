@@ -1,0 +1,9 @@
+{
+  "trip_id": "1",
+  "flags": [],
+  "trust_score": 100,
+  "reasons": [
+    "Clean commute verified: No route deviations, unauthorized stops, or GPS mismatch (+2 pts)"
+  ],
+  "gps_status": "OK"
+}

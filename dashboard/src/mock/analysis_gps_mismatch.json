@@ -1,0 +1,11 @@
+{
+  "trip_id": "1",
+  "flags": [
+    "GPS_MISMATCH"
+  ],
+  "trust_score": 80,
+  "reasons": [
+    "GPS mismatch of 459 m between rider and driver at 23:07:30 (-20 pts)"
+  ],
+  "gps_status": "OK"
+}

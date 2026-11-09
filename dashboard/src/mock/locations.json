@@ -1,0 +1,146 @@
+[
+  {
+    "id": 1,
+    "trip_id": 101,
+    "source": "EMPLOYEE",
+    "latitude": 12.967996,
+    "longitude": 80.149995,
+    "speed": 38.7,
+    "recorded_at": "2026-11-09T22:30:00Z"
+  },
+  {
+    "id": 2,
+    "trip_id": 101,
+    "source": "DRIVER",
+    "latitude": 12.968,
+    "longitude": 80.149952,
+    "speed": 38.7,
+    "recorded_at": "2026-11-09T22:30:00Z"
+  },
+  {
+    "id": 3,
+    "trip_id": 101,
+    "source": "EMPLOYEE",
+    "latitude": 12.966325,
+    "longitude": 80.152594,
+    "speed": 41.1,
+    "recorded_at": "2026-11-09T22:30:00Z"
+  },
+  {
+    "id": 4,
+    "trip_id": 101,
+    "source": "DRIVER",
+    "latitude": 12.966308,
+    "longitude": 80.152605,
+    "speed": 41.1,
+    "recorded_at": "2026-11-09T22:30:00Z"
+  },
+  {
+    "id": 5,
+    "trip_id": 101,
+    "source": "EMPLOYEE",
+    "latitude": 12.964644,
+    "longitude": 80.155083,
+    "speed": 39.5,
+    "recorded_at": "2026-11-09T22:30:00Z"
+  },
+  {
+    "id": 6,
+    "trip_id": 101,
+    "source": "DRIVER",
+    "latitude": 12.964609,
+    "longitude": 80.155012,
+    "speed": 39.5,
+    "recorded_at": "2026-11-09T22:30:00Z"
+  },
+  {
+    "id": 7,
+    "trip_id": 101,
+    "source": "EMPLOYEE",
+    "latitude": 12.962972,
+    "longitude": 80.157641,
+    "speed": 40.0,
+    "recorded_at": "2026-11-09T22:30:00Z"
+  },
+  {
+    "id": 8,
+    "trip_id": 101,
+    "source": "DRIVER",
+    "latitude": 12.962919,
+    "longitude": 80.157667,
+    "speed": 40.0,
+    "recorded_at": "2026-11-09T22:30:00Z"
+  },
+  {
+    "id": 9,
+    "trip_id": 101,
+    "source": "EMPLOYEE",
+    "latitude": 12.961289,
+    "longitude": 80.160186,
+    "speed": 40.9,
+    "recorded_at": "2026-11-09T22:30:00Z"
+  },
+  {
+    "id": 10,
+    "trip_id": 101,
+    "source": "DRIVER",
+    "latitude": 12.961325,
+    "longitude": 80.160194,
+    "speed": 40.9,
+    "recorded_at": "2026-11-09T22:30:00Z"
+  },
+  {
+    "id": 11,
+    "trip_id": 101,
+    "source": "EMPLOYEE",
+    "latitude": 12.959867,
+    "longitude": 80.16287,
+    "speed": 40.5,
+    "recorded_at": "2026-11-09T22:30:00Z"
+  },
+  {
+    "id": 12,
+    "trip_id": 101,
+    "source": "DRIVER",
+    "latitude": 12.959877,
+    "longitude": 80.162903,
+    "speed": 40.5,
+    "recorded_at": "2026-11-09T22:30:00Z"
+  },
+  {
+    "id": 13,
+    "trip_id": 101,
+    "source": "EMPLOYEE",
+    "latitude": 12.959032,
+    "longitude": 80.16582,
+    "speed": 41.8,
+    "recorded_at": "2026-11-09T22:30:00Z"
+  },
+  {
+    "id": 14,
+    "trip_id": 101,
+    "source": "DRIVER",
+    "latitude": 12.958987,
+    "longitude": 80.165782,
+    "speed": 41.8,
+    "recorded_at": "2026-11-09T22:30:00Z"
+  },
+  {
+    "id": 15,
+    "trip_id": 101,
+    "source": "EMPLOYEE",
+    "latitude": 12.958165,
+    "longitude": 80.168745,
+    "speed": 37.9,
+    "recorded_at": "2026-11-09T22:30:00Z"
+  },
+  {
+    "id": 16,
+    "trip_id": 101,
+    "source": "DRIVER",
+    "latitude": 12.958105,
+    "longitude": 80.168736,
+    "speed": 37.9,
+    "recorded_at": "2026-11-09T22:30:00Z"
+  }
+]

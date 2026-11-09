@@ -1,0 +1,101 @@
+{
+  "id": 101,
+  "employee_id": 42,
+  "driver_id": 7,
+  "vehicle_id": 12,
+  "pickup_location": "Pallavaram Railway Station, GST Rd, Chennai",
+  "destination": "ELCOT SEZ, Sholinganallur, Chennai",
+  "planned_route": [
+    [
+      12.968,
+      80.15
+    ],
+    [
+      12.9602,
+      80.1618
+    ],
+    [
+      12.9568,
+      80.1735
+    ],
+    [
+      12.9541,
+      80.1852
+    ],
+    [
+      12.9469,
+      80.1973
+    ],
+    [
+      12.9418,
+      80.2064
+    ],
+    [
+      12.9372,
+      80.2138
+    ],
+    [
+      12.9331,
+      80.2209
+    ],
+    [
+      12.9298,
+      80.2276
+    ],
+    [
+      12.9234,
+      80.2268
+    ],
+    [
+      12.9152,
+      80.2251
+    ],
+    [
+      12.9085,
+      80.2294
+    ],
+    [
+      12.9038,
+      80.2335
+    ],
+    [
+      12.9018,
+      80.2405
+    ],
+    [
+      12.9002,
+      80.2462
+    ],
+    [
+      12.901,
+      80.252
+    ],
+    [
+      12.906,
+      80.251
+    ]
+  ],
+  "status": "ACTIVE",
+  "started_at": "2026-11-09T22:30:00Z",
+  "ended_at": null,
+  "last_employee_heartbeat_at": "2026-11-09T22:45:00Z",
+  "last_driver_heartbeat_at": "2026-11-09T22:45:02Z",
+  "employee": {
+    "name": "Ananya Sharma",
+    "role": "Data Platform Engineer (Night Shift)",
+    "phone": "+91 98410 88219",
+    "emergency_contact": "+91 98410 99999 (Mother - Sunita Sharma)"
+  },
+  "driver": {
+    "name": "Rajesh Kumar",
+    "phone": "+91 98401 23456",
+    "license_no": "TN-07-20180004521",
+    "trust_score": 92.0,
+    "night_duty_eligible": true
+  },
+  "vehicle": {
+    "plate_number": "TN 09 BZ 4412",
+    "model": "Maruti Suzuki Dzire (White)",
+    "capacity": 4
+  }
+}

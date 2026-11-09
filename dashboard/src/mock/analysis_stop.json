@@ -1,0 +1,11 @@
+{
+  "trip_id": "1",
+  "flags": [
+    "UNEXPECTED_STOP"
+  ],
+  "trust_score": 90,
+  "reasons": [
+    "Unexpected stop of 6.5 min mid-route at 23:08:00 (-10 pts)"
+  ],
+  "gps_status": "OK"
+}

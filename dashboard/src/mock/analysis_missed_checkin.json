@@ -1,0 +1,11 @@
+{
+  "trip_id": "1",
+  "flags": [
+    "MISSED_CHECKIN"
+  ],
+  "trust_score": 80,
+  "reasons": [
+    "Scheduled 15-minute safety check-in prompt expired without employee response (-20 pts)"
+  ],
+  "gps_status": "OK"
+}

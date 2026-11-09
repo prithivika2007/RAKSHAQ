@@ -1,0 +1,46 @@
+[
+  {
+    "id": 101,
+    "trip_id": 1,
+    "incident_type": "ROUTE_DEVIATION",
+    "severity": "HIGH",
+    "status": "OPEN",
+    "created_at": "2026-11-09T23:08:00Z",
+    "latitude": 12.949842,
+    "longitude": 80.208471,
+    "description": "Vehicle drifted 884 m off the designated Radial Road corridor towards unauthorized marshland bypass."
+  },
+  {
+    "id": 102,
+    "trip_id": 1,
+    "incident_type": "UNEXPECTED_STOP",
+    "severity": "MEDIUM",
+    "status": "OPEN",
+    "created_at": "2026-11-09T23:08:00Z",
+    "latitude": 12.9331,
+    "longitude": 80.2209,
+    "description": "Stationary mid-route halt of 6.5 minutes detected near Narayanapuram Lake outside pickup/dropoff zones."
+  },
+  {
+    "id": 103,
+    "trip_id": 1,
+    "incident_type": "DURESS_PIN",
+    "severity": "CRITICAL",
+    "status": "OPEN",
+    "created_at": "2026-11-09T23:11:30Z",
+    "latitude": 12.949842,
+    "longitude": 80.208471,
+    "description": "EMERGENCY: Duress silent distress PIN triggered on employee phone. Immediate safety intervention required."
+  },
+  {
+    "id": 104,
+    "trip_id": 1,
+    "incident_type": "MISSED_CHECKIN",
+    "severity": "HIGH",
+    "status": "OPEN",
+    "created_at": "2026-11-09T23:15:00Z",
+    "latitude": 12.9568,
+    "longitude": 80.1735,
+    "description": "Periodic 15-minute commute check-in unanswered by employee device after multiple automated push pings."
+  }
+]

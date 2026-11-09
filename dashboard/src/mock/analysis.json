@@ -1,0 +1,10 @@
+{
+  "trip_id": "101",
+  "flags": [],
+  "trust_score": 98,
+  "reasons": [
+    "Route tracking verified on Radial Road corridor (+2 pts)",
+    "Dual employee and vehicle GPS streams within 12m tolerance"
+  ],
+  "gps_status": "OK"
+}

@@ -1,0 +1,13 @@
+{
+  "trip_id": "1",
+  "flags": [
+    "ROUTE_DEVIATION",
+    "DURESS_PIN"
+  ],
+  "trust_score": 45,
+  "reasons": [
+    "CRITICAL: Duress PIN SOS triggered by employee phone (-40 pts)",
+    "Deviated 884 m from planned route at 23:08:00 (-15 pts)"
+  ],
+  "gps_status": "OK"
+}
