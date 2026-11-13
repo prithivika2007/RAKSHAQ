@@ -16,6 +16,7 @@ from app.services.trip_service import (
     create_trip,
     get_trip,
     list_active_trips,
+    list_scheduled_trips,
     record_location,
     start_trip,
 )
@@ -37,4 +38,5 @@ __all__ = [
     "complete_trip",
     "get_trip",
     "list_active_trips",
+    "list_scheduled_trips",
 ]

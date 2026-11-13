@@ -21,6 +21,7 @@ class Trip(Base):
     # Device heartbeat tracking for missed check-in and connectivity monitoring
     last_employee_heartbeat_at = Column(DateTime(timezone=True), nullable=True)
     last_driver_heartbeat_at = Column(DateTime(timezone=True), nullable=True)
+    last_checkin_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
     employee = relationship("Employee", back_populates="trips")

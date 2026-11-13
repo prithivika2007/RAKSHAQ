@@ -12,7 +12,7 @@ export default function ActiveTripCard({ trip }) {
     return () => clearInterval(timer);
   }, []);
 
-  // Requirement 3: If no active trip, show "No active trip" empty state
+  // Show an empty state when the backend has no trip record to display.
   if (!trip) {
     return (
       <div className="card active-trip-card card-empty-state">
@@ -36,8 +36,7 @@ export default function ActiveTripCard({ trip }) {
           </div>
           <h4 className="empty-title">NO ACTIVE TRIP</h4>
           <p className="empty-desc">
-            No night-shift cab commutes are currently active on the Chennai corridor.
-            Telemetry monitoring is standing by and will automatically engage when a trip is dispatched.
+            No trip records are currently available from the backend. Telemetry and alert panels will update when trip data is available.
           </p>
         </div>
       </div>
@@ -47,10 +46,13 @@ export default function ActiveTripCard({ trip }) {
   // Requirement 4: Heartbeat age comes from last_employee_heartbeat_at and last_driver_heartbeat_at
   const employeeHeartbeat = formatHeartbeatAge(trip.last_employee_heartbeat_at);
   const driverHeartbeat = formatHeartbeatAge(trip.last_driver_heartbeat_at);
+  const checkinAge = formatHeartbeatAge(trip.last_checkin_at);
 
-  // Turn card red above 60 seconds
-  const isHeartbeatStale = employeeHeartbeat.seconds > 60;
+  const isLiveTrip = ['ACTIVE', 'ALERT'].includes(trip.status);
+  const isHeartbeatStale = isLiveTrip && employeeHeartbeat.seconds > 60;
+  const isDriverHeartbeatStale = isLiveTrip && driverHeartbeat.seconds > 60;
   const isTripAlert = trip.status === 'ALERT';
+  const statusClass = isTripAlert ? 'pill-alert' : trip.status === 'ACTIVE' ? 'pill-active' : 'pill-idle';
 
   return (
     <div className={`card active-trip-card ${isHeartbeatStale ? 'card-red-alert' : isTripAlert ? 'card-alert-state' : ''}`}>
@@ -72,12 +74,12 @@ export default function ActiveTripCard({ trip }) {
 
       <div className="card-header">
         <div className="card-header-left">
-          <span className="card-title">ACTIVE COMMUTE MONITOR</span>
+          <span className="card-title">{isLiveTrip ? 'ACTIVE COMMUTE MONITOR' : 'TRIP DETAILS'}</span>
           <span className="trip-id-tag">TRIP #{trip.id}</span>
         </div>
         <div className="card-header-right">
-          <span className={`status-pill ${trip.status === 'ALERT' ? 'pill-alert' : 'pill-active'}`}>
-            <span className="pill-dot"></span>
+          <span className={`status-pill ${statusClass}`}>
+            <span className={`pill-dot ${statusClass === 'pill-idle' ? 'dot-idle' : ''}`}></span>
             {trip.status}
           </span>
         </div>
@@ -117,14 +119,18 @@ export default function ActiveTripCard({ trip }) {
           <div className={`heartbeat-box ${isHeartbeatStale ? 'heartbeat-box-stale' : ''}`}>
             <div className="heartbeat-header">
               <span className="heartbeat-label">EMPLOYEE HEARTBEAT</span>
-              <span className={`heartbeat-indicator-dot ${isHeartbeatStale ? 'stale-pulse' : 'fresh-pulse'}`}></span>
+              <span className={`heartbeat-indicator-dot ${isHeartbeatStale ? 'stale-pulse' : isLiveTrip ? 'fresh-pulse' : 'dot-idle'}`}></span>
             </div>
             <div className="heartbeat-metric">
               <span className={`heartbeat-age ${isHeartbeatStale ? 'text-stale' : 'text-fresh'}`}>
                 {employeeHeartbeat.text}
               </span>
               <span className="heartbeat-threshold">
-                {isHeartbeatStale ? '(CRITICAL > 60s)' : '(Target < 30s)'}
+                {isLiveTrip
+                  ? (isHeartbeatStale ? '(CRITICAL > 60s)' : '(Target < 30s)')
+                  : trip.status === 'SCHEDULED'
+                    ? '(Not started)'
+                    : '(Last recorded)'}
               </span>
             </div>
             <div className="heartbeat-sub">
@@ -135,18 +141,32 @@ export default function ActiveTripCard({ trip }) {
           <div className="heartbeat-box">
             <div className="heartbeat-header">
               <span className="heartbeat-label">DRIVER CAB HEARTBEAT</span>
-              <span className="heartbeat-indicator-dot fresh-pulse"></span>
+              <span className={`heartbeat-indicator-dot ${isDriverHeartbeatStale ? 'stale-pulse' : isLiveTrip ? 'fresh-pulse' : 'dot-idle'}`}></span>
             </div>
             <div className="heartbeat-metric">
-              <span className="heartbeat-age text-fresh">
+              <span className={`heartbeat-age ${isDriverHeartbeatStale ? 'text-stale' : isLiveTrip ? 'text-fresh' : ''}`}>
                 {driverHeartbeat.text}
               </span>
-              <span className="heartbeat-threshold">(Active telemetry)</span>
+              <span className="heartbeat-threshold">
+                {isDriverHeartbeatStale
+                  ? '(STALE > 60s)'
+                  : isLiveTrip
+                    ? '(Active telemetry)'
+                    : trip.status === 'SCHEDULED'
+                      ? '(Not started)'
+                      : '(Last recorded)'}
+              </span>
             </div>
             <div className="heartbeat-sub">
               Last ping: {formatTime(trip.last_driver_heartbeat_at)}
             </div>
           </div>
+        </div>
+
+        <div className="trip-checkin-status">
+          <span>LAST SAFETY CHECK-IN</span>
+          <strong>{trip.last_checkin_at ? checkinAge.text : 'No check-in recorded'}</strong>
+          {trip.last_checkin_at && <time dateTime={trip.last_checkin_at}>{formatTime(trip.last_checkin_at)}</time>}
         </div>
 
         {/* Rider & Cab Quick Specs */}
@@ -161,14 +181,14 @@ export default function ActiveTripCard({ trip }) {
           <div className="spec-item">
             <span className="spec-label">VEHICLE</span>
             <span className="spec-val">
-              {trip.vehicle?.plate_number || 'TN 09 BZ 4412'} ({trip.vehicle?.model || 'Dzire'})
+              {trip.vehicle?.plate_number || (trip.vehicle_id ? `Vehicle #${trip.vehicle_id}` : 'Not assigned')}
             </span>
           </div>
           <div className="spec-divider"></div>
           <div className="spec-item">
             <span className="spec-label">DRIVER</span>
             <span className="spec-val">
-              {trip.driver?.name || `Driver #${trip.driver_id}`}
+              {trip.driver?.name || (trip.driver_id ? `Driver #${trip.driver_id}` : 'Not assigned')}
             </span>
           </div>
         </div>

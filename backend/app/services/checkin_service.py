@@ -56,6 +56,7 @@ def verify_and_process_checkin(
         employee.failed_pin_attempts = 0
         employee.pin_locked_until = None
         trip.last_employee_heartbeat_at = now
+        trip.last_checkin_at = now
         db.commit()
 
         return CheckInResponse(
@@ -70,6 +71,7 @@ def verify_and_process_checkin(
         employee.failed_pin_attempts = 0
         employee.pin_locked_until = None
         trip.last_employee_heartbeat_at = now
+        trip.last_checkin_at = now
         trip.status = "ALERT"
 
         # Covertly raise CRITICAL incident - attacker sees standard confirmation on phone screen
@@ -120,4 +122,3 @@ def process_heartbeat_ping(db: Session, trip_id: int, source: str) -> Trip:
     db.commit()
     db.refresh(trip)
     return trip
-

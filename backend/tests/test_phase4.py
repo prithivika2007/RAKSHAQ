@@ -18,7 +18,7 @@ from app.core.security import (
     is_pin_locked,
     verify_pin,
 )
-from app.database import Base, SessionLocal, engine, ensure_schema_updated
+from app.database import Base, ensure_schema_updated
 from app.models import Driver, Employee, Incident, Trip, TripLocation, Vehicle
 from app.schemas import (
     CheckInRequest,
@@ -202,10 +202,35 @@ def test_schema_ml_compatibility():
 
 def test_database_migration_and_relationships():
     """Verify database auto-migration and all 6 tables and relationships."""
-    # 1. Run migration
-    ensure_schema_updated(engine)
+    from sqlalchemy import create_engine, inspect, text
+    from sqlalchemy.orm import sessionmaker
+    from sqlalchemy.pool import StaticPool
 
-    db = SessionLocal()
+    test_engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    with test_engine.begin() as conn:
+        conn.execute(text(
+            "CREATE TABLE employees ("
+            "id INTEGER NOT NULL PRIMARY KEY, "
+            "name VARCHAR(100) NOT NULL, "
+            "phone VARCHAR(20) NOT NULL, "
+            "email VARCHAR(100) NOT NULL)"
+        ))
+    ensure_schema_updated(test_engine)
+    Base.metadata.create_all(bind=test_engine)
+    employee_columns = {
+        column["name"] for column in inspect(test_engine).get_columns("employees")
+    }
+    assert {
+        "normal_pin_hash",
+        "duress_pin_hash",
+        "failed_pin_attempts",
+        "pin_locked_until",
+    } <= employee_columns
+    db = sessionmaker(bind=test_engine)()
     try:
         # 2. Create test employee with PIN hashes & rate limiting fields
         normal_h = hash_pin("1234")
@@ -325,6 +350,7 @@ def test_database_migration_and_relationships():
 
     finally:
         db.close()
+        test_engine.dispose()
 
 
 if __name__ == "__main__":

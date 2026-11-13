@@ -119,12 +119,12 @@ def seed():
             )
             db.add(trip)
             db.flush()
-            print(f"[seed] Created trip: {trip.pickup_location} → {trip.destination} (id={trip.id})")
+            print(f"[seed] Created trip: {trip.pickup_location} -> {trip.destination} (id={trip.id})")
         else:
             print(f"[seed] Trip already exists (id={trip.id}, status={trip.status})")
 
         db.commit()
-        print("\n[seed] ✅ Chennai demo seed complete.")
+        print("\n[seed] Chennai demo seed complete.")
         print(f"       employee_id={employee.id}  driver_id={driver.id}"
               f"  vehicle_id={vehicle.id}  trip_id={trip.id}")
         print(f"       Normal PIN : {NORMAL_PIN}")
@@ -132,7 +132,7 @@ def seed():
 
     except Exception as exc:
         db.rollback()
-        print(f"[seed] ❌ Seed failed: {exc}")
+        print(f"[seed] Seed failed: {exc}")
         raise
     finally:
         db.close()

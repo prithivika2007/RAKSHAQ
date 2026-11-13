@@ -1,6 +1,6 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Literal, Optional
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class TripLocationBase(BaseModel):
@@ -18,5 +18,12 @@ class TripLocationCreate(TripLocationBase):
 class TripLocationResponse(TripLocationBase):
     id: int
     recorded_at: datetime
+
+    @field_validator("recorded_at", mode="before")
+    @classmethod
+    def normalize_sqlite_datetime(cls, value: datetime) -> datetime:
+        if value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value
 
     model_config = ConfigDict(from_attributes=True)

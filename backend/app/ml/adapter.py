@@ -6,6 +6,7 @@ modifying any code or files in the root ml/ directory.
 
 import sys
 from pathlib import Path
+from datetime import timezone
 from typing import Any, Dict, List, Optional
 from sqlalchemy.orm import Session
 
@@ -55,7 +56,10 @@ def evaluate_trip_safety(
     driver_points: List[Dict[str, Any]] = []
 
     for loc in locations:
-        ts = loc.recorded_at.timestamp() if loc.recorded_at else 0.0
+        recorded_at = loc.recorded_at
+        if recorded_at is not None and recorded_at.tzinfo is None:
+            recorded_at = recorded_at.replace(tzinfo=timezone.utc)
+        ts = recorded_at.timestamp() if recorded_at else 0.0
         if loc.source == "EMPLOYEE":
             points.append({
                 "lat": loc.latitude,
@@ -130,4 +134,3 @@ def evaluate_trip_safety(
         reasons=reasons,
         gps_status="OK" if gps_status == "OK" else "UNAVAILABLE",
     )
-

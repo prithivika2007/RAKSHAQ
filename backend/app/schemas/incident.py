@@ -1,6 +1,6 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Literal, Optional
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class IncidentBase(BaseModel):
@@ -31,5 +31,12 @@ class IncidentResponse(IncidentBase):
     id: int
     status: str
     created_at: datetime
+
+    @field_validator("created_at", mode="before")
+    @classmethod
+    def normalize_sqlite_datetime(cls, value: datetime) -> datetime:
+        if value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value
 
     model_config = ConfigDict(from_attributes=True)

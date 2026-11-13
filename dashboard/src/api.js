@@ -22,7 +22,8 @@ import initialIncidents from './mock/incidents.json';
 
 // Support VITE_API_URL (default http://localhost:8000) with fallback to VITE_API_BASE_URL
 export const API_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-export const USE_MOCK = String(import.meta.env.VITE_USE_MOCK).toLowerCase() === 'true';
+const PREVIEW_MODE = new URLSearchParams(window.location.search).get('mode') === 'preview';
+export const USE_MOCK = PREVIEW_MODE || String(import.meta.env.VITE_USE_MOCK).toLowerCase() === 'true';
 
 // ---------------------------------------------------------------------------
 // Normalisation Layer (Requirement 2)
@@ -32,9 +33,13 @@ export const USE_MOCK = String(import.meta.env.VITE_USE_MOCK).toLowerCase() === 
 
 export function normalizeLocation(loc) {
   if (!loc) return null;
-  const lat = Number(loc.latitude ?? loc.lat ?? 0);
-  const lng = Number(loc.longitude ?? loc.lng ?? 0);
-  const ts = loc.recorded_at ?? loc.ts ?? new Date().toISOString();
+  const lat = Number(loc.latitude ?? loc.lat);
+  const lng = Number(loc.longitude ?? loc.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    throw new Error('Trip location response is missing valid coordinates.');
+  }
+  const ts = loc.recorded_at ?? loc.ts;
+  if (!ts) throw new Error('Trip location response is missing its recorded timestamp.');
   const speed = Number(loc.speed ?? 0);
   const source = loc.source ? String(loc.source).toUpperCase() : 'EMPLOYEE';
 
@@ -74,7 +79,8 @@ export function normalizeIncident(inc) {
   if (!inc) return null;
   const lat = inc.latitude != null ? Number(inc.latitude) : inc.lat != null ? Number(inc.lat) : null;
   const lng = inc.longitude != null ? Number(inc.longitude) : inc.lng != null ? Number(inc.lng) : null;
-  const ts = inc.created_at ?? inc.ts ?? new Date().toISOString();
+  const ts = inc.created_at ?? inc.ts;
+  if (!ts) throw new Error('Incident response is missing its created timestamp.');
 
   return {
     id: inc.id,
@@ -108,7 +114,8 @@ export function normalizeTrip(trip) {
     started_at: trip.started_at,
     ended_at: trip.ended_at,
     last_employee_heartbeat_at: trip.last_employee_heartbeat_at,
-    last_driver_heartbeat_at: trip.last_driver_heartbeat_at
+    last_driver_heartbeat_at: trip.last_driver_heartbeat_at,
+    last_checkin_at: trip.last_checkin_at
   };
 }
 
@@ -327,6 +334,71 @@ export function toggleMockGpsStatus() {
 // ---------------------------------------------------------------------------
 
 /**
+ * GET /trips
+ * Returns recent trips across lifecycle states for dashboard totals and selection.
+ */
+export async function getTrips() {
+  if (USE_MOCK) {
+    const activeTrip = await getActiveTrip();
+    return activeTrip ? [activeTrip] : [];
+  }
+
+  const res = await fetch(`${API_URL}/trips?limit=500`);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch trips (${res.status}): ${res.statusText}`);
+  }
+  const data = await res.json();
+  if (!Array.isArray(data)) {
+    throw new Error('Invalid trips response: expected an array.');
+  }
+  return data.map(normalizeTrip);
+}
+
+/**
+ * GET /employees
+ * PIN hashes are never returned; pin_configured is readiness metadata only.
+ */
+export async function getEmployees() {
+  if (USE_MOCK) {
+    return [{
+      ...tripMock.employee,
+      id: tripMock.employee?.id ?? tripMock.employee_id,
+      email: null,
+      pin_configured: true
+    }];
+  }
+
+  const res = await fetch(`${API_URL}/employees`);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch employees (${res.status}): ${res.statusText}`);
+  }
+  const data = await res.json();
+  if (!Array.isArray(data)) {
+    throw new Error('Invalid employees response: expected an array.');
+  }
+  return data;
+}
+
+/**
+ * GET /drivers
+ */
+export async function getDrivers() {
+  if (USE_MOCK) {
+    return [await getDriver(tripMock.driver?.id ?? tripMock.driver_id)];
+  }
+
+  const res = await fetch(`${API_URL}/drivers`);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch drivers (${res.status}): ${res.statusText}`);
+  }
+  const data = await res.json();
+  if (!Array.isArray(data)) {
+    throw new Error('Invalid drivers response: expected an array.');
+  }
+  return data;
+}
+
+/**
  * GET /trips/active
  * Automatically picks the first active trip from the backend list, or null if none.
  */
@@ -362,8 +434,10 @@ export async function getActiveTrip() {
     throw new Error(`Failed to fetch active trips (${res.status}): ${res.statusText}`);
   }
   const data = await res.json();
-  // Requirement 3: Pick the first active trip automatically. If none, return null.
-  const firstActive = Array.isArray(data) ? (data[0] || null) : (data || null);
+  if (!Array.isArray(data)) {
+    throw new Error('Invalid active trips response: expected an array.');
+  }
+  const firstActive = data[0] || null;
   if (!firstActive) return null;
 
   return normalizeTrip(firstActive);
@@ -372,7 +446,7 @@ export async function getActiveTrip() {
 /**
  * GET /trips/{id}
  */
-export async function getTrip(tripId = 1) {
+export async function getTrip(tripId) {
   if (USE_MOCK) {
     return normalizeTrip(tripMock);
   }
@@ -389,7 +463,7 @@ export async function getTrip(tripId = 1) {
  * GET /trips/{id}/locations
  * Returns normalised GPS pings with { lat, lng, ts } and splits by source into employeeTrail & driverTrail.
  */
-export async function getTripLocations(tripId = 1) {
+export async function getTripLocations(tripId) {
   if (USE_MOCK) {
     const currentCfg = SCENARIOS[state.scenario] || SCENARIOS.NORMAL;
     const allLocs = currentCfg.locations;
@@ -416,7 +490,10 @@ export async function getTripLocations(tripId = 1) {
     throw new Error(`Failed to fetch trip locations (${res.status}): ${res.statusText}`);
   }
   const raw = await res.json();
-  const list = Array.isArray(raw) ? raw : [];
+  if (!Array.isArray(raw)) {
+    throw new Error(`Invalid locations response for trip ${tripId}: expected an array.`);
+  }
+  const list = raw;
   const normalized = list.map(normalizeLocation);
   const { employeeTrail, driverTrail } = splitLocations(normalized);
 
@@ -442,7 +519,10 @@ export async function getIncidents() {
     throw new Error(`Failed to fetch incidents (${res.status}): ${res.statusText}`);
   }
   const data = await res.json();
-  const list = Array.isArray(data) ? data : [];
+  if (!Array.isArray(data)) {
+    throw new Error('Invalid incidents response: expected an array.');
+  }
+  const list = data;
   return list
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .map(normalizeIncident);
@@ -452,7 +532,7 @@ export async function getIncidents() {
  * GET /trips/{id}/analysis
  * ML output shape: { trip_id, flags, trust_score, reasons, gps_status }
  */
-export async function getTripAnalysis(tripId = 1) {
+export async function getTripAnalysis(tripId) {
   if (USE_MOCK) {
     if (state.forcedGpsStatus === 'UNAVAILABLE') {
       return {
@@ -478,7 +558,7 @@ export async function getTripAnalysis(tripId = 1) {
 /**
  * GET /drivers/{id}
  */
-export async function getDriver(driverId = 1) {
+export async function getDriver(driverId) {
   if (USE_MOCK) {
     return {
       id: driverId,
@@ -532,7 +612,7 @@ export async function updateIncident(incidentId, updateData) {
  * PATCH /drivers/{id}
  * Updates driver profile or night_duty_eligible status.
  */
-export async function updateDriver(driverId = 1, updateData) {
+export async function updateDriver(driverId, updateData) {
   if (USE_MOCK) {
     if (updateData.night_duty_eligible !== undefined) {
       state.restrictedNightDuty = !updateData.night_duty_eligible;

@@ -108,3 +108,10 @@ def list_active_trips(db: Session) -> List[Trip]:
     """List all currently active or alerting trips."""
     return db.query(Trip).filter(Trip.status.in_(["ACTIVE", "ALERT"])).all()
 
+
+def list_scheduled_trips(db: Session, employee_id: Optional[int] = None) -> List[Trip]:
+    """List scheduled trips, optionally restricted to one employee."""
+    query = db.query(Trip).filter(Trip.status == "SCHEDULED")
+    if employee_id is not None:
+        query = query.filter(Trip.employee_id == employee_id)
+    return query.order_by(Trip.id.asc()).all()

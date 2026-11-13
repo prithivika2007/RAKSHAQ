@@ -5,6 +5,7 @@ export default function DriverTrustCard({
   driver,
   onToggleNightDutyOverride
 }) {
+  const [isUpdatingNightDuty, setIsUpdatingNightDuty] = useState(false);
   // Sync state with driver prop or local state
   const [isRestricted, setIsRestricted] = useState(
     driver?.night_duty_eligible !== undefined ? !driver.night_duty_eligible : false
@@ -16,25 +17,29 @@ export default function DriverTrustCard({
     }
   }, [driver?.night_duty_eligible]);
 
-  const trustScore = analysis?.trust_score ?? 100;
+  const trustScore = analysis?.trust_score ?? driver?.trust_score ?? null;
   const flags = analysis?.flags ?? [];
   const reasons = analysis?.reasons ?? [];
-  const gpsStatus = analysis?.gps_status ?? 'OK';
+  const gpsStatus = analysis?.gps_status ?? null;
 
-  const driverName = driver?.name || 'Rajesh Kumar';
-  const driverPhone = driver?.phone || '+91 98401 23456';
-  const licenseNo = driver?.license_no || 'TN-07-20180004521';
+  const driverName = driver?.name || 'No driver assigned';
+  const driverPhone = driver?.phone || 'Not available';
+  const licenseNo = driver?.license_no || 'Not provided';
 
   // Determine score color
-  let scoreColor = '#10b981'; // Green
-  let scoreLabel = 'VERIFIED TRUST';
+  let scoreColor = trustScore === null ? '#64748b' : '#10b981'; // Green
+  let scoreLabel = trustScore === null
+    ? 'NO TRUST SCORE'
+    : analysis
+      ? 'LIVE ML ANALYSIS'
+      : 'STORED TRUST SCORE';
   let scoreBadgeClass = 'badge-trust-high';
 
-  if (trustScore < 60) {
+  if (trustScore !== null && trustScore < 60) {
     scoreColor = '#ef4444'; // Red
     scoreLabel = 'CRITICAL RISK';
     scoreBadgeClass = 'badge-trust-low';
-  } else if (trustScore < 85) {
+  } else if (trustScore !== null && trustScore < 85) {
     scoreColor = '#f59e0b'; // Amber
     scoreLabel = 'DEVIATION DETECTED';
     scoreBadgeClass = 'badge-trust-med';
@@ -43,13 +48,19 @@ export default function DriverTrustCard({
   // SVG circular gauge calculation
   const radius = 54;
   const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference - (trustScore / 100) * circumference;
+  const strokeDashoffset = circumference - ((trustScore ?? 0) / 100) * circumference;
 
-  const handleToggleNightDuty = () => {
+  const handleToggleNightDuty = async () => {
     const nextState = !isRestricted;
-    setIsRestricted(nextState);
     if (onToggleNightDutyOverride) {
-      onToggleNightDutyOverride(nextState);
+      setIsUpdatingNightDuty(true);
+      try {
+        await onToggleNightDutyOverride(nextState);
+      } finally {
+        setIsUpdatingNightDuty(false);
+      }
+    } else {
+      setIsRestricted(nextState);
     }
   };
 
@@ -58,11 +69,13 @@ export default function DriverTrustCard({
       <div className="card-header">
         <div className="card-header-left">
           <span className="card-title">DRIVER INTEGRITY & TRUST</span>
-          <span className="driver-id-badge">ID: DRV-007</span>
+          <span className="driver-id-badge">{driver?.id ? `ID: ${driver.id}` : 'NO DRIVER ASSIGNED'}</span>
         </div>
         <div className="card-header-right">
           {/* Requirement 4: Show "GPS stream unavailable" in grey (not red) when gps_status is UNAVAILABLE */}
-          {gpsStatus === 'UNAVAILABLE' ? (
+          {!analysis ? (
+            <span className="gps-status-badge gps-no-analysis">No live analysis</span>
+          ) : gpsStatus === 'UNAVAILABLE' ? (
             <span className="gps-status-badge gps-unavailable-grey" title="Hardware GPS stream offline; fallback to rider phone">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <line x1="1" y1="1" x2="23" y2="23"/>
@@ -111,7 +124,7 @@ export default function DriverTrustCard({
             </svg>
             <div className="gauge-content">
               <div className="gauge-value" style={{ color: scoreColor }}>
-                {trustScore}
+                {trustScore ?? '—'}
               </div>
               <div className="gauge-denom">/ 100</div>
             </div>
@@ -135,17 +148,18 @@ export default function DriverTrustCard({
               </div>
               <div className="meta-row">
                 <span className="meta-lbl">Night Shift Status:</span>
-                <span className={`meta-val ${isRestricted ? 'text-danger font-bold' : 'text-success'}`}>
-                  {isRestricted ? 'RESTRICTED' : 'CLEARED & ELIGIBLE'}
+                <span className={`meta-val ${!driver ? '' : isRestricted ? 'text-danger font-bold' : 'text-success'}`}>
+                  {!driver ? 'Not assigned' : isRestricted ? 'RESTRICTED' : 'CLEARED & ELIGIBLE'}
                 </span>
               </div>
             </div>
 
-            {/* Requirement 5: Optional "Restrict night duty" button (local state only) */}
+            {/* Restricts or restores the assigned driver's backend status. */}
             <div className="night-duty-action-row">
               <button
                 className={`btn-night-duty ${isRestricted ? 'btn-restore-duty' : 'btn-restrict-duty'}`}
                 onClick={handleToggleNightDuty}
+                disabled={isUpdatingNightDuty || !driver?.id}
               >
                 {isRestricted ? (
                   <>
@@ -159,7 +173,7 @@ export default function DriverTrustCard({
                   </>
                 )}
               </button>
-              <span className="action-hint">(Local operator toggle)</span>
+              <span className="action-hint">{isUpdatingNightDuty ? '(Saving...)' : '(Saved to driver record)'}</span>
             </div>
           </div>
         </div>
@@ -167,7 +181,9 @@ export default function DriverTrustCard({
         {/* Threat Flags Section */}
         <div className="flags-section">
           <div className="section-label">DETECTED ML THREAT FLAGS</div>
-          {flags.length === 0 ? (
+          {!analysis ? (
+            <div className="reason-item text-muted">No live analysis has been run for this trip.</div>
+          ) : flags.length === 0 ? (
             <div className="flags-clean-pill">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
               <span>CLEAN COMMUTE — NO ACTIVE ANOMALY FLAGS</span>
@@ -187,7 +203,9 @@ export default function DriverTrustCard({
         {/* Reasons as Evidence Section */}
         <div className="reasons-section">
           <div className="section-label">TELEMETRY EVIDENCE & EXPLAINABILITY</div>
-          {reasons.length === 0 ? (
+          {!analysis ? (
+            <div className="reason-item text-muted">Analysis is available for active or alerting trips.</div>
+          ) : reasons.length === 0 ? (
             <div className="reason-item text-muted">No telemetry deductions recorded.</div>
           ) : (
             <ul className="reasons-list">
@@ -204,4 +222,3 @@ export default function DriverTrustCard({
     </div>
   );
 }
-

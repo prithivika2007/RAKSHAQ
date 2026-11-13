@@ -1,32 +1,42 @@
-# React + TypeScript + Vite
+# RAKSHAQ Employee Portal
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+The portal runs on port `5174` and uses the FastAPI backend at
+`http://127.0.0.1:8000`.
 
-Currently, two official plugins are available:
+Start the backend and seed the Chennai demo data from `backend/` first:
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```powershell
+python scripts\seed_chennai.py
+python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+Then start the portal:
+
+```powershell
+npm install
+npm run dev -- --host 127.0.0.1 --port 5174
+```
+
+To use **Preview Dashboard**, start its separate Vite app in another terminal
+from the repository root:
+
+```powershell
+cd dashboard
+npm run dev
+```
+
+The portal's Preview Dashboard button opens
+`http://127.0.0.1:5173/index.html?mode=preview`. Preview mode uses only the
+dashboard's local demo/replay fixtures; dashboard edits affect only in-memory
+demo state and do not call the backend. The portal remains on port `5174`.
+
+The seed script prints the employee's database ID. The demo phone number is
+`+919840001234`; use both to verify the registered employee. A scheduled trip
+for that employee is started when available, otherwise a real scheduled SQLite
+trip is created before starting. The demo portal submits route-based GPS samples
+to the trip telemetry API every five seconds.
+
+Check-in PINs in the Chennai seed are `2810` (normal) and `9999` (silent duress).
+Both return the same check-in confirmation; duress creates a CRITICAL incident
+visible to the dashboard. The Emergency SOS control creates a CRITICAL SOS
+incident. Completing a commute updates the trip status to `COMPLETED`.

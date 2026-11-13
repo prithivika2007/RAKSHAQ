@@ -2,7 +2,14 @@
 
 from app.schemas.checkin import CheckInRequest, CheckInResponse, HeartbeatPing
 from app.schemas.driver import DriverBase, DriverCreate, DriverResponse, DriverUpdate
-from app.schemas.employee import EmployeeBase, EmployeeCreate, EmployeePINSetup, EmployeeResponse
+from app.schemas.employee import (
+    EmployeeBase,
+    EmployeeCreate,
+    EmployeeDashboardResponse,
+    EmployeePINSetup,
+    EmployeeResponse,
+    EmployeeVerifyRequest,
+)
 from app.schemas.incident import IncidentBase, IncidentCreate, IncidentResponse, IncidentUpdate
 from app.schemas.ml import MLDriverPoint, MLTelemetryPoint, MLTripAnalysisInput, MLTripAnalysisOutput
 from app.schemas.trip import TripBase, TripCreate, TripResponse, TripUpdate
@@ -14,7 +21,9 @@ __all__ = [
     "EmployeeBase",
     "EmployeeCreate",
     "EmployeePINSetup",
+    "EmployeeVerifyRequest",
     "EmployeeResponse",
+    "EmployeeDashboardResponse",
     # Driver
     "DriverBase",
     "DriverCreate",

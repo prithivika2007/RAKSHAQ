@@ -39,6 +39,11 @@ def ensure_schema_updated(eng):
             if "pin_locked_until" not in emp_cols:
                 conn.execute(text("ALTER TABLE employees ADD COLUMN pin_locked_until DATETIME;"))
             conn.commit()
+        if "trips" in tables:
+            trip_cols = {c["name"] for c in inspector.get_columns("trips")}
+            if "last_checkin_at" not in trip_cols:
+                conn.execute(text("ALTER TABLE trips ADD COLUMN last_checkin_at DATETIME;"))
+                conn.commit()
 
 
 def get_db():

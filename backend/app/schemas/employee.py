@@ -23,8 +23,17 @@ class EmployeePINSetup(BaseModel):
         return self
 
 
+class EmployeeVerifyRequest(BaseModel):
+    employee_id: int = Field(..., gt=0)
+    phone: str = Field(..., min_length=5, max_length=20)
+
+
 class EmployeeResponse(EmployeeBase):
     id: int
 
     # Plaintext and hashed PINs are never exposed in responses
     model_config = ConfigDict(from_attributes=True)
+
+
+class EmployeeDashboardResponse(EmployeeResponse):
+    pin_configured: bool

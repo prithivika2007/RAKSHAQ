@@ -10,6 +10,9 @@ Coverage:
   GET  /trips/{id}/locations
   GET  /trips/{id}/analysis
   GET  /incidents
+  GET  /employees
+  GET  /drivers
+  GET  /trips
   GET  /drivers/{id}
   POST /trips/{id}/start
   POST /trips/{id}/locations
@@ -30,11 +33,11 @@ sys.path.insert(0, str(BACKEND_DIR))
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import sessionmaker
 
 from app.core.security import hash_pin
-from app.database import Base, get_db
+from app.database import Base, ensure_schema_updated, get_db
 from app.main import app
 
 # ── In-memory test database ───────────────────────────────────────────────────
@@ -181,6 +184,80 @@ def test_get_active_trips_returns_active():
     trips = resp.json()
     assert len(trips) == 1
     assert trips[0]["status"] == "ACTIVE"
+
+
+# ── Test: Dashboard read endpoints ────────────────────────────────────────────
+
+def test_dashboard_employee_and_driver_lists():
+    _clear_db()
+    ids = _seed_db()
+
+    employees = client.get("/employees")
+    assert employees.status_code == 200
+    assert employees.json() == [{
+        "id": ids["employee_id"],
+        "name": "Priya Test",
+        "phone": "+919800000001",
+        "email": "priya@test.local",
+        "pin_configured": True,
+    }]
+    assert "normal_pin_hash" not in employees.text
+    assert "duress_pin_hash" not in employees.text
+
+    drivers = client.get("/drivers")
+    assert drivers.status_code == 200
+    assert drivers.json() == [{
+        "id": ids["driver_id"],
+        "name": "Ravi Test",
+        "phone": "+919800000002",
+        "trust_score": 90.0,
+        "night_duty_eligible": True,
+    }]
+
+
+def test_dashboard_trip_lists_include_scheduled_and_completed():
+    _clear_db()
+    ids = _seed_db()
+
+    scheduled = client.get("/trips/scheduled")
+    assert scheduled.status_code == 200
+    assert [trip["id"] for trip in scheduled.json()] == [ids["trip_id"]]
+
+    all_trips = client.get("/trips")
+    assert all_trips.status_code == 200
+    assert [(trip["id"], trip["status"]) for trip in all_trips.json()] == [
+        (ids["trip_id"], "SCHEDULED")
+    ]
+
+    client.post(f"/trips/{ids['trip_id']}/start")
+    completed = client.post(f"/trips/{ids['trip_id']}/complete")
+    assert completed.status_code == 200
+    completed_trips = client.get("/trips?status=completed")
+    assert completed_trips.status_code == 200
+    assert [(trip["id"], trip["status"]) for trip in completed_trips.json()] == [
+        (ids["trip_id"], "COMPLETED")
+    ]
+
+
+def test_dashboard_trip_list_rejects_unknown_status():
+    _clear_db()
+    response = client.get("/trips?status=UNKNOWN")
+    assert response.status_code == 422
+
+
+def test_trip_migration_adds_last_checkin_timestamp():
+    legacy_engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    with legacy_engine.begin() as connection:
+        connection.execute(text("CREATE TABLE trips (id INTEGER NOT NULL PRIMARY KEY)"))
+
+    ensure_schema_updated(legacy_engine)
+    trip_columns = {column["name"] for column in inspect(legacy_engine).get_columns("trips")}
+    assert "last_checkin_at" in trip_columns
+    legacy_engine.dispose()
 
 
 # ── Test: GET /trips/{id} ─────────────────────────────────────────────────────
@@ -358,6 +435,8 @@ def test_checkin_normal_pin():
     data = resp.json()
     assert data["status"] == "ACKNOWLEDGED"
     assert data["trip_id"] == ids["trip_id"]
+    trip = client.get(f"/trips/{ids['trip_id']}").json()
+    assert trip["last_checkin_at"] == data["timestamp"]
 
 
 def test_checkin_duress_pin_identical_response():
@@ -372,6 +451,8 @@ def test_checkin_duress_pin_identical_response():
     data = resp.json()
     assert data["status"] == "ACKNOWLEDGED"  # Identical — attacker cannot distinguish
     assert data["message"] == "Check-in verified successfully"
+    trip = client.get(f"/trips/{ids['trip_id']}").json()
+    assert trip["last_checkin_at"] == data["timestamp"]
 
     # Verify DURESS_PIN incident was raised silently
     from app.models.incident import Incident
@@ -642,14 +723,167 @@ def test_analysis_no_locations():
     _clear_db()
     ids = _seed_db()
     resp = client.get(f"/trips/{ids['trip_id']}/analysis")
-    # ML runs on empty points — should return a valid output, not crash
-    assert resp.status_code in (200, 500)  # 500 only if ML itself errors on empty input
+    assert resp.status_code == 200
 
 
 def test_analysis_trip_not_found():
     _clear_db()
     resp = client.get("/trips/9999/analysis")
     assert resp.status_code == 404
+
+
+def test_employee_to_dashboard_end_to_end():
+    """Verify employee actions persist and are visible through dashboard routes."""
+    _clear_db()
+    ids = _seed_db()
+
+    verification = client.post("/employees/verify", json={
+        "employee_id": ids["employee_id"],
+        "phone": "+919800000001",
+    })
+    assert verification.status_code == 200
+    assert verification.json()["id"] == ids["employee_id"]
+
+    scheduled = client.get(f"/trips/scheduled?employee_id={ids['employee_id']}")
+    assert scheduled.status_code == 200
+    assert len(scheduled.json()) == 1
+
+    trip_id = ids["trip_id"]
+    started = client.post(f"/trips/{trip_id}/start")
+    assert started.status_code == 200
+    assert started.json()["status"] == "ACTIVE"
+    assert started.json()["last_employee_heartbeat_at"].endswith(("Z", "+00:00"))
+
+    normal_checkin = client.post(f"/trips/{trip_id}/check-in", json={
+        "trip_id": trip_id,
+        "pin": "1234",
+    })
+    assert normal_checkin.status_code == 200
+    assert normal_checkin.json()["message"] == "Check-in verified successfully"
+
+    gps_ping = client.post(f"/trips/{trip_id}/locations", json={
+        "trip_id": trip_id,
+        "source": "EMPLOYEE",
+        "latitude": 13.085,
+        "longitude": 80.210,
+        "speed": 30,
+    })
+    assert gps_ping.status_code == 201
+    assert gps_ping.json()["source"] == "EMPLOYEE"
+    assert gps_ping.json()["recorded_at"].endswith(("Z", "+00:00"))
+
+    duress_checkin = client.post(f"/trips/{trip_id}/check-in", json={
+        "trip_id": trip_id,
+        "pin": "9999",
+        "latitude": 13.085,
+        "longitude": 80.210,
+    })
+    assert duress_checkin.status_code == 200
+    assert duress_checkin.json()["message"] == normal_checkin.json()["message"]
+    assert duress_checkin.json()["status"] == normal_checkin.json()["status"]
+
+    sos = client.post("/incidents", json={
+        "trip_id": trip_id,
+        "incident_type": "SOS",
+        "severity": "CRITICAL",
+        "description": "Employee initiated an emergency SOS.",
+        "latitude": 13.085,
+        "longitude": 80.210,
+    })
+    assert sos.status_code == 201
+    assert sos.json()["created_at"].endswith(("Z", "+00:00"))
+
+    # Three consecutive off-route samples exercise the real ML adapter.
+    for offset in (0.0, 0.001, 0.002):
+        response = client.post(f"/trips/{trip_id}/locations", json={
+            "trip_id": trip_id,
+            "source": "EMPLOYEE",
+            "latitude": 13.085 + offset,
+            "longitude": 80.230,
+            "speed": 30,
+        })
+        assert response.status_code == 201
+
+    analysis = client.get(f"/trips/{trip_id}/analysis")
+    assert analysis.status_code == 200
+    assert "ROUTE_DEVIATION" in analysis.json()["flags"]
+    assert analysis.json()["trust_score"] < 100
+
+    # These are the same live read endpoints used by the dashboard.
+    active_trips = client.get("/trips/active")
+    assert active_trips.status_code == 200
+    assert active_trips.json()[0]["id"] == trip_id
+    locations = client.get(f"/trips/{trip_id}/locations")
+    assert locations.status_code == 200
+    assert len(locations.json()) == 4
+    incidents = client.get("/incidents")
+    assert incidents.status_code == 200
+    incident_types = {incident["incident_type"] for incident in incidents.json()}
+    assert {"DURESS_PIN", "SOS", "ROUTE_DEVIATION"} <= incident_types
+
+    driver = client.get(f"/drivers/{ids['driver_id']}")
+    assert driver.status_code == 200
+    assert driver.json()["trust_score"] == float(analysis.json()["trust_score"])
+
+    completed = client.post(f"/trips/{trip_id}/complete")
+    assert completed.status_code == 200
+    assert completed.json()["status"] == "COMPLETED"
+    stored_trip = client.get(f"/trips/{trip_id}")
+    assert stored_trip.status_code == 200
+    assert stored_trip.json()["status"] == "COMPLETED"
+
+
+def test_chennai_seed_script_creates_idempotent_demo_records():
+    """Run the actual seed function against an isolated in-memory database."""
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from sqlalchemy.pool import StaticPool
+
+    from app.core.security import verify_pin
+    from app.models import Driver, Employee, Trip, Vehicle
+    from scripts import seed_chennai
+
+    seed_engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    Base.metadata.create_all(bind=seed_engine)
+    original_engine = seed_chennai.engine
+    original_session_local = seed_chennai.SessionLocal
+    seed_session = sessionmaker(autocommit=False, autoflush=False, bind=seed_engine)
+    seed_chennai.engine = seed_engine
+    seed_chennai.SessionLocal = seed_session
+
+    try:
+        seed_chennai.seed()
+        seed_chennai.seed()
+
+        db = seed_session()
+        try:
+            employee = db.query(Employee).filter_by(email=seed_chennai.EMPLOYEE_EMAIL).one()
+            driver = db.query(Driver).filter_by(phone=seed_chennai.DRIVER_PHONE).one()
+            vehicle = db.query(Vehicle).filter_by(
+                registration_number=seed_chennai.VEHICLE_REG
+            ).one()
+            trip = db.query(Trip).filter_by(
+                employee_id=employee.id,
+                driver_id=driver.id,
+                vehicle_id=vehicle.id,
+            ).one()
+            assert verify_pin(seed_chennai.NORMAL_PIN, employee.normal_pin_hash)
+            assert verify_pin(seed_chennai.DURESS_PIN, employee.duress_pin_hash)
+            assert trip.status == "SCHEDULED"
+            assert db.query(Employee).count() == 1
+            assert db.query(Driver).count() == 1
+            assert db.query(Vehicle).count() == 1
+            assert db.query(Trip).count() == 1
+        finally:
+            db.close()
+    finally:
+        seed_chennai.engine = original_engine
+        seed_chennai.SessionLocal = original_session_local
+        seed_engine.dispose()
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
@@ -697,6 +931,8 @@ if __name__ == "__main__":
         test_completed_trip_not_reverted_to_active,
         test_analysis_no_locations,
         test_analysis_trip_not_found,
+        test_employee_to_dashboard_end_to_end,
+        test_chennai_seed_script_creates_idempotent_demo_records,
     ]
 
     passed = failed = 0

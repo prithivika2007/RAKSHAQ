@@ -360,6 +360,10 @@ def test_ml_adapter_integration():
         output = evaluate_trip_safety(db, trip.id)
         assert "ROUTE_DEVIATION" in output.flags
         assert output.trust_score < 100
+        expected_utc_time = datetime.fromtimestamp(
+            base_ts, tz=timezone.utc
+        ).strftime("%H:%M:%S")
+        assert any(expected_utc_time in reason for reason in output.reasons)
 
         # 2. Check Driver trust score updated in DB
         db.refresh(driver)
@@ -397,4 +401,3 @@ if __name__ == "__main__":
     print("Running test_ml_adapter_integration...")
     test_ml_adapter_integration()
     print("\nALL PHASE 5 TESTS PASSED SUCCESSFULLY!")
-

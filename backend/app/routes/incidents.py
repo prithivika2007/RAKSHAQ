@@ -11,13 +11,39 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.incident import Incident
-from app.schemas.incident import IncidentResponse, IncidentUpdate
-from app.services.alert_service import acknowledge_incident, resolve_incident
+from app.schemas.incident import IncidentCreate, IncidentResponse, IncidentUpdate
+from app.services.alert_service import acknowledge_incident, create_incident, resolve_incident
+from app.services.trip_service import get_trip
 
 router = APIRouter(prefix="/incidents", tags=["Incidents"])
 
 # Valid status values accepted from query params
 _VALID_STATUSES = {"OPEN", "ACKNOWLEDGED", "RESOLVED", "FALSE_ALARM"}
+
+
+@router.post("", response_model=IncidentResponse, status_code=status.HTTP_201_CREATED, summary="Create SOS incident")
+def post_incident(payload: IncidentCreate, db: Session = Depends(get_db)):
+    """Persist an employee SOS against a currently monitored trip."""
+    trip = get_trip(db, payload.trip_id)
+    if not trip:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Trip {payload.trip_id} not found.",
+        )
+    if trip.status not in ("ACTIVE", "ALERT"):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Trip {payload.trip_id} is not active (status: '{trip.status}').",
+        )
+    return create_incident(
+        db,
+        trip_id=payload.trip_id,
+        incident_type=payload.incident_type,
+        severity=payload.severity,
+        description=payload.description,
+        latitude=payload.latitude,
+        longitude=payload.longitude,
+    )
 
 
 @router.get("", response_model=List[IncidentResponse], summary="List incidents")

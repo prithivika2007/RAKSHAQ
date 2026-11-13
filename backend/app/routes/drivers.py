@@ -1,5 +1,7 @@
 """Driver profile and trust score routes."""
 
+from typing import List
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -8,6 +10,12 @@ from app.models.driver import Driver
 from app.schemas.driver import DriverResponse, DriverUpdate
 
 router = APIRouter(prefix="/drivers", tags=["Drivers"])
+
+
+@router.get("", response_model=List[DriverResponse], summary="List driver profiles")
+def list_drivers(db: Session = Depends(get_db)):
+    """Return driver profiles including their current trust and night-duty status."""
+    return db.query(Driver).order_by(Driver.id.asc()).all()
 
 
 @router.get("/{driver_id}", response_model=DriverResponse, summary="Get driver profile")

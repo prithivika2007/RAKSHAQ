@@ -5,29 +5,35 @@ Route order is intentional: static paths (/active) must precede dynamic
 path parameters (/{trip_id}) to avoid integer-parse failures.
 """
 
-from typing import List
+from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.ml.adapter import evaluate_trip_safety
+from app.models.driver import Driver
+from app.models.employee import Employee
 from app.models.trip import Trip
 from app.models.trip_location import TripLocation
+from app.models.vehicle import Vehicle
 from app.schemas.checkin import CheckInRequest, CheckInResponse, HeartbeatPing
 from app.schemas.ml import MLTripAnalysisOutput
-from app.schemas.trip import TripResponse
+from app.schemas.trip import TripCreate, TripResponse
 from app.schemas.trip_location import TripLocationCreate, TripLocationResponse
 from app.services.checkin_service import process_heartbeat_ping, verify_and_process_checkin
 from app.services.trip_service import (
     complete_trip,
+    create_trip,
     get_trip,
     list_active_trips,
+    list_scheduled_trips,
     record_location,
     start_trip,
 )
 
 router = APIRouter(prefix="/trips", tags=["Trips"])
+_VALID_TRIP_STATUSES = {"SCHEDULED", "ACTIVE", "ALERT", "COMPLETED", "CANCELLED"}
 
 # ── Dashboard read endpoints ──────────────────────────────────────────────────
 
@@ -36,6 +42,60 @@ router = APIRouter(prefix="/trips", tags=["Trips"])
 def get_active_trips(db: Session = Depends(get_db)):
     """Return all trips with status ACTIVE or ALERT for real-time dashboard monitoring."""
     return list_active_trips(db)
+
+
+@router.get("", response_model=List[TripResponse], summary="List trips")
+def get_trips(
+    trip_status: Optional[str] = Query(default=None, alias="status"),
+    limit: int = Query(default=100, ge=1, le=500),
+    db: Session = Depends(get_db),
+):
+    """Return recent trip records, optionally filtered by lifecycle status."""
+    query = db.query(Trip)
+    if trip_status is not None:
+        normalized_status = trip_status.upper()
+        if normalized_status not in _VALID_TRIP_STATUSES:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Invalid trip status '{trip_status}'. Must be one of: {sorted(_VALID_TRIP_STATUSES)}.",
+            )
+        query = query.filter(Trip.status == normalized_status)
+    return query.order_by(Trip.id.desc()).limit(limit).all()
+
+
+@router.get("/scheduled", response_model=List[TripResponse], summary="List scheduled employee trips")
+def get_scheduled_trips(
+    employee_id: Optional[int] = Query(default=None, gt=0),
+    db: Session = Depends(get_db),
+):
+    """Return scheduled trips, optionally restricted to one employee."""
+    if employee_id is not None and not db.query(Employee.id).filter(Employee.id == employee_id).first():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Employee {employee_id} not found.",
+        )
+    return list_scheduled_trips(db, employee_id)
+
+
+@router.post("", response_model=TripResponse, status_code=status.HTTP_201_CREATED, summary="Schedule a trip")
+def schedule_trip(payload: TripCreate, db: Session = Depends(get_db)):
+    """Create a database-backed scheduled trip using the shared trip service."""
+    if not db.query(Employee.id).filter(Employee.id == payload.employee_id).first():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Employee {payload.employee_id} not found.",
+        )
+    if payload.driver_id is not None and not db.query(Driver.id).filter(Driver.id == payload.driver_id).first():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Driver {payload.driver_id} not found.",
+        )
+    if payload.vehicle_id is not None and not db.query(Vehicle.id).filter(Vehicle.id == payload.vehicle_id).first():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Vehicle {payload.vehicle_id} not found.",
+        )
+    return create_trip(db, payload)
 
 
 @router.get("/{trip_id}", response_model=TripResponse, summary="Get trip by ID")

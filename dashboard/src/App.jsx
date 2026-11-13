@@ -1,17 +1,18 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Navbar from './components/Navbar';
 import ReplayControlBar from './components/ReplayControlBar';
+import OperationsOverview from './components/OperationsOverview';
 import ActiveTripCard from './components/ActiveTripCard';
 import DriverTrustCard from './components/DriverTrustCard';
 import LiveMap from './components/LiveMap';
 import AlertsTimeline from './components/AlertsTimeline';
 import {
-  getActiveTrip,
-  getTrip,
+  getTrips,
+  getEmployees,
+  getDrivers,
   getTripLocations,
   getIncidents,
   getTripAnalysis,
-  getDriver,
   updateIncident,
   updateDriver,
   USE_MOCK,
@@ -25,10 +26,16 @@ import {
 import './App.css';
 
 export default function App() {
-  const [activeTrip, setActiveTrip] = useState(null);
+  const [selectedTrip, setSelectedTrip] = useState(null);
+  const [selectedTripId, setSelectedTripId] = useState(null);
+  const selectedTripIdRef = useRef(null);
+  const [trips, setTrips] = useState([]);
+  const [employees, setEmployees] = useState([]);
+  const [drivers, setDrivers] = useState([]);
   const [locations, setLocations] = useState([]);
   const [incidents, setIncidents] = useState([]);
   const [analysis, setAnalysis] = useState(null);
+  const [hasLoadedDashboardData, setHasLoadedDashboardData] = useState(false);
   
   // Loading state on first load (Requirement 5)
   const [isInitialLoading, setIsInitialLoading] = useState(true);
@@ -62,42 +69,43 @@ export default function App() {
   }, [selectedScenario]);
 
   // Fetch all endpoints (Requirement 1, 2, 3, 5)
-  const fetchAllData = useCallback(async () => {
+  const fetchAllData = useCallback(async (preferredTripId = selectedTripIdRef.current) => {
     try {
-      // Pick first active trip automatically (Requirement 3)
-      const trip = await getActiveTrip();
-      
-      if (trip) {
-        // If driver info is separate, fetch driver details
-        if (trip.driver_id && !trip.driver?.name) {
-          try {
-            const driverInfo = await getDriver(trip.driver_id);
-            trip.driver = { ...trip.driver, ...driverInfo };
-          } catch (dErr) {
-            console.warn('Driver fetch warning:', dErr);
+      const [tripData, employeeData, driverData, incidentData] = await Promise.all([
+        getTrips(),
+        getEmployees(),
+        getDrivers(),
+        getIncidents()
+      ]);
+      const preferredTrip = tripData.find((trip) => trip.id === preferredTripId);
+      const chosenTrip = preferredTrip || tripData.find((trip) => ['ALERT', 'ACTIVE'].includes(trip.status)) || tripData.find((trip) => trip.status === 'SCHEDULED') || tripData[0] || null;
+      const trip = chosenTrip
+        ? {
+            ...chosenTrip,
+            employee: employeeData.find((employee) => employee.id === chosenTrip.employee_id) || null,
+            driver: driverData.find((driver) => driver.id === chosenTrip.driver_id) || null
           }
-        }
+        : null;
 
-        setActiveTrip(trip);
-
-        const tripId = trip.id;
-        const [locsData, incsData, analysisData] = await Promise.all([
-          getTripLocations(tripId),
-          getIncidents(),
-          getTripAnalysis(tripId)
-        ]);
-
-        setLocations(locsData || []);
-        setIncidents(incsData || []);
-        setAnalysis(analysisData || null);
-      } else {
-        // No active trip found (Requirement 3: empty state)
-        setActiveTrip(null);
-        try {
-          const incsData = await getIncidents();
-          setIncidents(incsData || []);
-        } catch (_) {}
+      let locationsData = [];
+      let analysisData = null;
+      if (trip && trip.status !== 'SCHEDULED') {
+        locationsData = await getTripLocations(trip.id);
       }
+      if (trip && ['ACTIVE', 'ALERT'].includes(trip.status)) {
+        analysisData = await getTripAnalysis(trip.id);
+      }
+
+      setTrips(tripData);
+      setEmployees(employeeData);
+      setDrivers(driverData);
+      setIncidents(incidentData);
+      setSelectedTrip(trip);
+      setSelectedTripId(trip?.id ?? null);
+      selectedTripIdRef.current = trip?.id ?? null;
+      setLocations(locationsData);
+      setAnalysis(analysisData);
+      setHasLoadedDashboardData(true);
 
       // Backend healthy
       setIsBackendOffline(false);
@@ -108,7 +116,7 @@ export default function App() {
       // Requirement 5: Keep last data instead of crashing if backend is offline
       if (!USE_MOCK) {
         setIsBackendOffline(true);
-        setLastError(err.message || 'Network error');
+        setLastError(err instanceof Error ? err.message : 'Network error');
       }
     } finally {
       setIsInitialLoading(false);
@@ -145,9 +153,7 @@ export default function App() {
       setIncidents((prev) =>
         prev.map((inc) => (inc.id === incidentId ? { ...inc, status: newStatus } : inc))
       );
-      // Re-fetch trip to update alert status
-      const trip = await getActiveTrip();
-      if (trip) setActiveTrip(trip);
+      await fetchAllData();
     } catch (err) {
       console.error(`Failed to update incident ${incidentId}:`, err);
       alert(`Could not update incident: ${err.message}`);
@@ -157,22 +163,31 @@ export default function App() {
   // Handle Driver Night Duty toggle (Requirement 1: PATCH /drivers/{id})
   const handleToggleNightDuty = async (isRestricted) => {
     try {
-      const driverId = activeTrip?.driver?.id || activeTrip?.driver_id || 1;
-      await updateDriver(driverId, { night_duty_eligible: !isRestricted });
-      setActiveTrip((prev) => {
+      const driverId = selectedTrip?.driver?.id || selectedTrip?.driver_id;
+      if (!driverId) {
+        throw new Error('There is no assigned driver to update.');
+      }
+      const updatedDriver = await updateDriver(driverId, { night_duty_eligible: !isRestricted });
+      setDrivers((prev) =>
+        prev.map((driver) => (driver.id === driverId ? updatedDriver : driver))
+      );
+      setSelectedTrip((prev) => {
         if (!prev) return prev;
         return {
           ...prev,
-          driver: {
-            ...prev.driver,
-            night_duty_eligible: !isRestricted
-          }
+          driver: updatedDriver
         };
       });
     } catch (err) {
       console.error('Failed to update driver night duty:', err);
       alert(`Driver update failed: ${err.message}`);
     }
+  };
+
+  const handleSelectTrip = (tripId) => {
+    selectedTripIdRef.current = tripId;
+    setSelectedTripId(tripId);
+    fetchAllData(tripId);
   };
 
   // Replay control handlers (Mock mode)
@@ -247,9 +262,9 @@ export default function App() {
       {isBackendOffline && !USE_MOCK && (
         <div className="backend-offline-banner">
           <div className="offline-pulse-dot"></div>
-          <span className="offline-badge">BACKEND OFFLINE</span>
+          <span className="offline-badge">API ERROR</span>
           <span className="offline-msg">
-            Unable to connect to <code>{API_URL}</code> ({lastError || 'Connection refused'}). Displaying last known telemetry snapshot. Retrying every 3s...
+            Could not load dashboard data from <code>{API_URL}</code> ({lastError || 'Request failed'}). Displaying the last successfully loaded data. Retrying every 3s...
           </span>
         </div>
       )}
@@ -265,17 +280,28 @@ export default function App() {
         />
       )}
 
+      {hasLoadedDashboardData && (
+        <OperationsOverview
+          trips={trips}
+          employees={employees}
+          drivers={drivers}
+          incidents={incidents}
+          selectedTripId={selectedTripId}
+          onSelectTrip={handleSelectTrip}
+        />
+      )}
+
       {/* Main Dashboard Grid */}
       <main className="dashboard-grid">
         {/* Left Column: Active Trip & Driver Trust Cards */}
         <section className="dashboard-col col-sidebar">
           {/* Requirement 3 & 4: Active trip card & empty state */}
-          <ActiveTripCard trip={activeTrip} />
+          <ActiveTripCard trip={selectedTrip} />
 
           {/* Driver Trust Score card */}
           <DriverTrustCard
             analysis={analysis}
-            driver={activeTrip?.driver}
+            driver={selectedTrip?.driver}
             onToggleNightDutyOverride={handleToggleNightDuty}
           />
         </section>
@@ -284,7 +310,8 @@ export default function App() {
         <section className="dashboard-col col-map">
           {/* Live map */}
           <LiveMap
-            plannedRoute={activeTrip?.planned_route || []}
+            isLiveTrip={['ACTIVE', 'ALERT'].includes(selectedTrip?.status)}
+            plannedRoute={selectedTrip?.planned_route || []}
             locations={locations}
             incidents={incidents}
             focusedCoords={focusedCoords}

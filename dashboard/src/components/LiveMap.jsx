@@ -25,6 +25,7 @@ function MapViewController({ centerTarget, zoom = 13 }) {
 }
 
 export default function LiveMap({
+  isLiveTrip,
   plannedRoute = [],
   locations = [],
   incidents = [],
@@ -49,24 +50,32 @@ export default function LiveMap({
     .filter(([lat, lng]) => lat != null && lng != null && !isNaN(lat) && !isNaN(lng));
 
   // Last known location
-  const latestLocation = empList.length > 0 ? empList[empList.length - 1] : null;
+  const latestLocation = [empList[empList.length - 1], drvList[drvList.length - 1]]
+    .filter(Boolean)
+    .reduce((latest, location) =>
+      !latest || new Date(location.ts ?? location.recorded_at) > new Date(latest.ts ?? latest.recorded_at)
+        ? location
+        : latest,
+    null);
   const currentCoords = latestLocation
     ? [latestLocation.lat ?? latestLocation.latitude, latestLocation.lng ?? latestLocation.longitude]
     : defaultCenter;
 
-  const currentSpeed = latestLocation?.speed ?? 38.0;
+  const currentSpeed = latestLocation?.speed ?? 0;
 
   // Pickup and drop-off coordinates
-  const pickupCoord = plannedRoute.length > 0 ? plannedRoute[0] : [12.9680, 80.1500];
-  const dropoffCoord = plannedRoute.length > 0 ? plannedRoute[plannedRoute.length - 1] : [12.9060, 80.2510];
+  const pickupCoord = plannedRoute.length > 0 ? plannedRoute[0] : null;
+  const dropoffCoord = plannedRoute.length > 0 ? plannedRoute[plannedRoute.length - 1] : null;
 
   return (
     <div className="card live-map-card">
       <div className="map-card-header">
         <div className="map-header-left">
-          <span className="card-title">LIVE TELEMETRY RADAR & CORRIDOR MAP</span>
+          <span className="card-title">
+            {isLiveTrip ? 'LIVE TELEMETRY RADAR & CORRIDOR MAP' : 'TRIP TELEMETRY & ROUTE MAP'}
+          </span>
           <span className="map-subtitle font-mono">
-            {latestLocation ? `${(latestLocation.lat ?? latestLocation.latitude).toFixed(5)}°N, ${(latestLocation.lng ?? latestLocation.longitude).toFixed(5)}°E` : '12.9350°N, 80.2050°E'}
+            {latestLocation ? `${(latestLocation.lat ?? latestLocation.latitude).toFixed(5)}°N, ${(latestLocation.lng ?? latestLocation.longitude).toFixed(5)}°E` : 'No GPS telemetry received'}
           </span>
         </div>
         <div className="map-header-right">
@@ -142,26 +151,26 @@ export default function LiveMap({
           )}
 
           {/* Pickup Marker */}
-          <Marker position={pickupCoord} icon={pickupIcon}>
-            <Popup>
-              <div className="map-popup-card">
-                <div className="popup-title">PICKUP POINT</div>
-                <div className="popup-desc">Pallavaram Railway Station, GST Road, Chennai</div>
-                <div className="popup-sub">Scheduled: 22:30 IST</div>
-              </div>
-            </Popup>
-          </Marker>
+          {pickupCoord && (
+            <Marker position={pickupCoord} icon={pickupIcon}>
+              <Popup>
+                <div className="map-popup-card">
+                  <div className="popup-title">PICKUP POINT</div>
+                </div>
+              </Popup>
+            </Marker>
+          )}
 
           {/* Drop-off Marker */}
-          <Marker position={dropoffCoord} icon={dropoffIcon}>
-            <Popup>
-              <div className="map-popup-card">
-                <div className="popup-title">DESTINATION</div>
-                <div className="popup-desc">ELCOT SEZ, Sholinganallur, Chennai</div>
-                <div className="popup-sub">Tech Park Gate 2 Secure Drop-off</div>
-              </div>
-            </Popup>
-          </Marker>
+          {dropoffCoord && (
+            <Marker position={dropoffCoord} icon={dropoffIcon}>
+              <Popup>
+                <div className="map-popup-card">
+                  <div className="popup-title">DESTINATION</div>
+                </div>
+              </Popup>
+            </Marker>
+          )}
 
           {/* Last Known Location Marker (Live Vehicle & Rider) */}
           {latestLocation && (
@@ -185,7 +194,7 @@ export default function LiveMap({
                     <span>Recorded:</span> {formatTime(latestLocation.ts ?? latestLocation.recorded_at)}
                   </div>
                   <div className="popup-status">
-                    Dual GPS Stream: Active & Tracking
+                    Latest source: {latestLocation.source || 'GPS'}
                   </div>
                 </div>
               </Popup>
@@ -252,7 +261,7 @@ export default function LiveMap({
           <div className="legend-title">CORRIDOR LEGEND</div>
           <div className="legend-item">
             <span className="legend-line line-planned"></span>
-            <span>Planned Route (Radial Rd)</span>
+            <span>Planned Route</span>
           </div>
           <div className="legend-item">
             <span className="legend-line line-emp"></span>
@@ -271,4 +280,3 @@ export default function LiveMap({
     </div>
   );
 }
-

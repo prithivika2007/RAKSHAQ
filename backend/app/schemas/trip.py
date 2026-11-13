@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -51,5 +51,20 @@ class TripResponse(TripBase):
     ended_at: Optional[datetime] = None
     last_employee_heartbeat_at: Optional[datetime] = None
     last_driver_heartbeat_at: Optional[datetime] = None
+    last_checkin_at: Optional[datetime] = None
+
+    @field_validator(
+        "started_at",
+        "ended_at",
+        "last_employee_heartbeat_at",
+        "last_driver_heartbeat_at",
+        "last_checkin_at",
+        mode="before",
+    )
+    @classmethod
+    def normalize_sqlite_datetime(cls, value: Optional[datetime]) -> Optional[datetime]:
+        if value is not None and value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value
 
     model_config = ConfigDict(from_attributes=True)
