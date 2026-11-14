@@ -30,18 +30,21 @@ The seed script prints the employee's database ID. The demo phone is
 ```powershell
 cd dashboard
 npm install
-npm run dev -- --host 127.0.0.1 --port 5173
+npm run dev
 ```
 
 [dashboard/.env](./dashboard/.env) is configured for the live backend. Live mode
-does not substitute mock responses when a backend request fails.
+does not substitute mock responses when a backend request fails. The dashboard
+server must remain running separately from the employee portal. Both Vite
+servers listen on all interfaces; for another device on the same network, open
+the portal using this computer's reachable LAN hostname or IP.
 
 ### 3. Employee portal (port 5174)
 
 ```powershell
 cd frontend
 npm install
-npm run dev -- --host 127.0.0.1 --port 5174
+npm run dev
 ```
 
 The demo portal sends its route-based GPS samples to the backend every five

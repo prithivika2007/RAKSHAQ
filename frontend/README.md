@@ -14,7 +14,7 @@ Then start the portal:
 
 ```powershell
 npm install
-npm run dev -- --host 127.0.0.1 --port 5174
+npm run dev
 ```
 
 To use **Preview Dashboard**, start its separate Vite app in another terminal
@@ -26,9 +26,18 @@ npm run dev
 ```
 
 The portal's Preview Dashboard button opens
-`http://127.0.0.1:5173/index.html?mode=preview`. Preview mode uses only the
-dashboard's local demo/replay fixtures; dashboard edits affect only in-memory
-demo state and do not call the backend. The portal remains on port `5174`.
+`/index.html?mode=preview` on the same host at port `5173`. The dashboard is a
+separate Vite app and must be running before clicking the button. Preview mode
+uses only the dashboard's local demo/replay fixtures; dashboard edits affect
+only in-memory demo state and do not call the backend. The portal remains on
+port `5174`.
+
+Both Vite servers listen on all network interfaces. For access from another
+device on the same network, open the portal using this computer's reachable
+LAN hostname or IP; the button uses that hostname for the dashboard URL as
+well. If the dashboard runs on a different host, set `VITE_DASHBOARD_URL` in
+the frontend environment to its reachable URL, including
+`/index.html?mode=preview`.
 
 The seed script prints the employee's database ID. The demo phone number is
 `+919840001234`; use both to verify the registered employee. A scheduled trip

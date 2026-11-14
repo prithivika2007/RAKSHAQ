@@ -73,7 +73,10 @@ export default function App() {
   }, [isPreview, isTripActive, tripId, tripRoute]);
 
   const handlePreview = () => {
-    window.location.assign(import.meta.env.VITE_DASHBOARD_URL);
+    const dashboardUrl =
+      import.meta.env.VITE_DASHBOARD_URL ||
+      `${window.location.protocol}//${window.location.hostname}:5173/index.html?mode=preview`;
+    window.location.assign(dashboardUrl);
   };
 
   const handleExitPreview = () => {
@@ -266,13 +269,6 @@ export default function App() {
               >
                 Verify Employee 🔑
               </button>
-              <button
-                type="button"
-                onClick={handlePreview}
-                style={{ width: '100%', padding: '12px', backgroundColor: '#1e293b', color: '#e2e8f0', fontWeight: '600', borderRadius: '12px', border: '1px solid #475569', cursor: 'pointer', fontSize: '14px' }}
-              >
-                Preview Dashboard
-              </button>
             </form>
 
             {statusMessage && (
@@ -391,6 +387,14 @@ export default function App() {
             </button>
           </div>
         )}
+
+        <button
+          type="button"
+          onClick={handlePreview}
+          style={{ width: '100%', padding: '12px', backgroundColor: '#1e293b', color: '#e2e8f0', fontWeight: '600', borderRadius: '12px', border: '1px solid #475569', cursor: 'pointer', fontSize: '14px' }}
+        >
+          Preview Dashboard
+        </button>
 
         {/* Modal */}
         {isCheckInOpen && !isPreview && (

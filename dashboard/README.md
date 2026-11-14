@@ -119,11 +119,12 @@ npm run dev
 Open your browser at `http://localhost:5173`.
 
 The employee portal's **Preview Dashboard** button opens
-`http://127.0.0.1:5173/index.html?mode=preview`. The `mode=preview` query
-forces local demo/replay data even when `.env` is configured with
-`VITE_USE_MOCK=false`; preview controls only update in-memory demo state and do
-not send requests to the FastAPI backend. Start this dashboard server before
-clicking the portal button.
+`/index.html?mode=preview` on this server. The `mode=preview` query forces
+local demo/replay data even when `.env` is configured with `VITE_USE_MOCK=false`;
+preview controls only update in-memory demo state and do not send requests to
+the FastAPI backend. Start this dashboard server separately before clicking the
+portal button. For access from another device on the same network, use the
+computer's reachable LAN hostname or IP for both the portal and dashboard.
 
 ### 3. Start the live FastAPI backend
 1. Start the FastAPI backend from the `backend/` directory:
@@ -132,7 +133,7 @@ clicking the portal button.
    ```
 2. Start/restart the dashboard:
    ```bash
-   npm run dev -- --host 127.0.0.1 --port 5173
+   npm run dev
    ```
 3. In LIVE mode:
    - The header displays a green `LIVE` badge.
