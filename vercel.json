@@ -1,13 +1,55 @@
-﻿{
+{
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "services": {
-    "backend": { "root": "backend", "framework": "fastapi" },
-    "dashboard": { "root": "dashboard", "framework": "vite" },
-    "frontend": { "root": "frontend", "framework": "vite" }
+    "backend": {
+      "root": "backend",
+      "framework": "fastapi",
+      "bindings": [
+        {
+          "type": "service",
+          "service": "ml",
+          "format": "url",
+          "env": "ML_SERVICE_URL"
+        }
+      ]
+    },
+    "dashboard": {
+      "root": "dashboard",
+      "framework": "vite"
+    },
+    "frontend": {
+      "root": "frontend",
+      "framework": "vite"
+    },
+    "ml": {
+      "root": "ml",
+      "runtime": "python"
+    }
   },
   "rewrites": [
-    { "source": "/dashboard/(.*)", "destination": { "service": "dashboard" } },
-    { "source": "/api/(.*)", "destination": { "service": "backend" } },
-    { "source": "/(.*)", "destination": { "service": "frontend" } }
+    {
+      "source": "/dashboard",
+      "destination": {
+        "service": "dashboard"
+      }
+    },
+    {
+      "source": "/dashboard/(.*)",
+      "destination": {
+        "service": "dashboard"
+      }
+    },
+    {
+      "source": "/api/(.*)",
+      "destination": {
+        "service": "backend"
+      }
+    },
+    {
+      "source": "/(.*)",
+      "destination": {
+        "service": "frontend"
+      }
+    }
   ]
 }
