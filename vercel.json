@@ -4,5 +4,10 @@
     "backend": { "root": "backend", "framework": "fastapi" },
     "dashboard": { "root": "dashboard", "framework": "vite" },
     "frontend": { "root": "frontend", "framework": "vite" }
-  }
+  },
+  "rewrites": [
+    { "source": "/dashboard/(.*)", "destination": { "service": "dashboard" } },
+    { "source": "/api/(.*)", "destination": { "service": "backend" } },
+    { "source": "/(.*)", "destination": { "service": "frontend" } }
+  ]
 }
